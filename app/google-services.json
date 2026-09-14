@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "31180324668",
+    "project_id": "hoaviko-79ee3",
+    "storage_bucket": "hoaviko-79ee3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:31180324668:android:7e9bc84f128518e5fd6839",
+        "android_client_info": {
+          "package_name": "mg.hoaviko.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAGFkxFUDkraiRa8xaqwMG4WgF36UBnI2E"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

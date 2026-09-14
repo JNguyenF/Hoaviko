@@ -18,7 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -56,7 +58,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Navigation entre les trois écrans.
+// Navigation entre les écrans.
 @Composable
 fun NavigationHoaviko() {
     val navController = rememberNavController()
@@ -82,19 +84,23 @@ fun NavigationHoaviko() {
 
         composable("connexion") {
             EcranConnexion(
-                onRetour = { navController.popBackStack() }
+                onRetour = {
+                    navController.popBackStack()
+                }
             )
         }
 
         composable("inscription") {
             EcranInscription(
-                onRetour = { navController.popBackStack() }
+                onRetour = {
+                    navController.popBackStack()
+                }
             )
         }
     }
 }
 
-// Transforme 120000 en "120 000".
+// Exemple : 120000 devient "120 000".
 fun formatMontant(valeur: Long): String {
     return valeur.toString()
         .reversed()
@@ -103,7 +109,7 @@ fun formatMontant(valeur: Long): String {
         .reversed()
 }
 
-// Accueil public et simulateur hors ligne.
+// Accueil public : fonctionne sans Internet.
 @Composable
 fun EcranBienvenue(
     onConnexion: () -> Unit,
@@ -112,6 +118,7 @@ fun EcranBienvenue(
     var montantMensuel by rememberSaveable {
         mutableStateOf("10000")
     }
+
     var dureeAnnees by rememberSaveable {
         mutableStateOf("1")
     }
@@ -119,6 +126,8 @@ fun EcranBienvenue(
     val montant = montantMensuel.toLongOrNull() ?: 0L
     val annees = dureeAnnees.toLongOrNull() ?: 0L
     val saisieValide = montant > 0L && annees > 0L
+
+    // Versement mensuel × 12 mois × nombre d'années.
     val total = montant * 12L * annees
 
     Column(
@@ -133,7 +142,7 @@ fun EcranBienvenue(
         Text(
             text = "Hoaviko",
             modifier = Modifier.fillMaxWidth(),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            textAlign = TextAlign.Center,
             style = MaterialTheme.typography.displayMedium,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
@@ -141,6 +150,8 @@ fun EcranBienvenue(
 
         Text(
             text = "Préparez votre avenir à votre rythme",
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
             style = MaterialTheme.typography.headlineSmall
         )
 
@@ -174,7 +185,9 @@ fun EcranBienvenue(
                             .filter { it in '0'..'9' }
                             .take(9)
                     },
-                    label = { Text("Versement mensuel (Ar)") },
+                    label = {
+                        Text("Versement mensuel (Ar)")
+                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number
                     ),
@@ -189,7 +202,9 @@ fun EcranBienvenue(
                             .filter { it in '0'..'9' }
                             .take(2)
                     },
-                    label = { Text("Durée en années") },
+                    label = {
+                        Text("Durée en années")
+                    },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number
                     ),
@@ -207,9 +222,11 @@ fun EcranBienvenue(
                         color = MaterialTheme.colorScheme.primary
                     )
 
+                    val uniteAnnee = if (annees == 1L) "an" else "ans"
+
                     Text(
                         text = "${formatMontant(montant)} Ar par mois " +
-                                "pendant $annees an(s)"
+                                "pendant $annees $uniteAnnee"
                     )
                 } else {
                     Text(
@@ -253,32 +270,45 @@ fun EcranBienvenue(
 
         Text(
             text = "Prototype pédagogique • Paiements simulés",
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
             style = MaterialTheme.typography.bodySmall
         )
     }
 }
 
-// Champ réutilisable avec affichage/masquage du mot de passe.
+// Champ de mot de passe réutilisable.
 @Composable
 fun ChampMotDePasse(
     valeur: String,
     onValeurChange: (String) -> Unit,
-    libelle: String
+    libelle: String,
+    enabled: Boolean = true
 ) {
     var visible by remember { mutableStateOf(false) }
 
     OutlinedTextField(
         value = valeur,
         onValueChange = onValeurChange,
-        label = { Text(libelle) },
+        enabled = enabled,
+        label = {
+            Text(libelle)
+        },
         visualTransformation = if (visible) {
             VisualTransformation.None
         } else {
             PasswordVisualTransformation()
         },
         trailingIcon = {
-            TextButton(onClick = { visible = !visible }) {
-                Text(if (visible) "Masquer" else "Afficher")
+            TextButton(
+                enabled = enabled,
+                onClick = {
+                    visible = !visible
+                }
+            ) {
+                Text(
+                    if (visible) "Masquer" else "Afficher"
+                )
             }
         },
         keyboardOptions = KeyboardOptions(
@@ -289,13 +319,24 @@ fun ChampMotDePasse(
     )
 }
 
-// Formulaire de connexion.
+// Formulaire de connexion : branchement Firebase à venir.
 @Composable
 fun EcranConnexion(onRetour: () -> Unit) {
-    var email by rememberSaveable { mutableStateOf("") }
-    var motDePasse by remember { mutableStateOf("") }
-    var erreur by remember { mutableStateOf<String?>(null) }
-    var afficherInformation by remember { mutableStateOf(false) }
+    var email by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    var motDePasse by remember {
+        mutableStateOf("")
+    }
+
+    var erreur by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var afficherInformation by remember {
+        mutableStateOf(false)
+    }
 
     Column(
         modifier = Modifier
@@ -327,7 +368,9 @@ fun EcranConnexion(onRetour: () -> Unit) {
                 email = it
                 erreur = null
             },
-            label = { Text("Adresse e-mail") },
+            label = {
+                Text("Adresse e-mail")
+            },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email
             ),
@@ -344,9 +387,9 @@ fun EcranConnexion(onRetour: () -> Unit) {
             libelle = "Mot de passe"
         )
 
-        erreur?.let {
+        erreur?.let { message ->
             Text(
-                text = it,
+                text = message,
                 color = MaterialTheme.colorScheme.error
             )
         }
@@ -376,30 +419,65 @@ fun EcranConnexion(onRetour: () -> Unit) {
 
     if (afficherInformation) {
         BoiteInformation(
-            titre = "Authentification à connecter",
+            titre = "Connexion à brancher",
             message = "Le formulaire est correctement rempli. " +
-                    "La vérification du compte nécessite encore " +
-                    "le service d’authentification.",
-            onFermer = { afficherInformation = false }
+                    "Nous relierons cet écran à Firebase " +
+                    "à la prochaine étape.",
+            onFermer = {
+                afficherInformation = false
+            }
         )
     }
 }
 
-// Formulaire d'inscription avec calendrier et CIN.
+// Inscription réelle avec Firebase Authentication.
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EcranInscription(onRetour: () -> Unit) {
-    var nom by rememberSaveable { mutableStateOf("") }
-    var prenom by rememberSaveable { mutableStateOf("") }
-    var email by rememberSaveable { mutableStateOf("") }
-    var dateNaissance by rememberSaveable { mutableStateOf("") }
-    var cin by rememberSaveable { mutableStateOf("") }
+fun EcranInscription(
+    onRetour: () -> Unit,
+    authViewModel: AuthViewModel = viewModel()
+) {
+    val etatAuth by authViewModel.uiState.collectAsState()
 
-    var motDePasse by remember { mutableStateOf("") }
-    var confirmation by remember { mutableStateOf("") }
-    var erreur by remember { mutableStateOf<String?>(null) }
-    var formulaireValide by remember { mutableStateOf(false) }
-    var afficherCalendrier by remember { mutableStateOf(false) }
+    var nom by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    var prenom by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    var email by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    var dateNaissance by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    var cin by rememberSaveable {
+        mutableStateOf("")
+    }
+
+    // Les mots de passe ne sont pas sauvegardés sur le téléphone.
+    var motDePasse by remember {
+        mutableStateOf("")
+    }
+
+    var confirmation by remember {
+        mutableStateOf("")
+    }
+
+    var erreur by remember {
+        mutableStateOf<String?>(null)
+    }
+
+    var afficherCalendrier by remember {
+        mutableStateOf(false)
+    }
+
+    val formulaireActif =
+        !etatAuth.chargement && !etatAuth.compteCree
 
     val calendrier = rememberDatePickerState(
         selectableDates = object : SelectableDates {
@@ -410,10 +488,19 @@ fun EcranInscription(onRetour: () -> Unit) {
             }
 
             override fun isSelectableYear(year: Int): Boolean {
-                return year <= Calendar.getInstance().get(Calendar.YEAR)
+                return year <= Calendar.getInstance()
+                    .get(Calendar.YEAR)
             }
         }
     )
+
+    // Efface les mots de passe dès que le compte est créé.
+    LaunchedEffect(etatAuth.compteCree) {
+        if (etatAuth.compteCree) {
+            motDePasse = ""
+            confirmation = ""
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -424,7 +511,10 @@ fun EcranInscription(onRetour: () -> Unit) {
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        TextButton(onClick = onRetour) {
+        TextButton(
+            onClick = onRetour,
+            enabled = !etatAuth.chargement
+        ) {
             Text("Retour")
         }
 
@@ -445,7 +535,10 @@ fun EcranInscription(onRetour: () -> Unit) {
                 nom = it
                 erreur = null
             },
-            label = { Text("Nom") },
+            enabled = formulaireActif,
+            label = {
+                Text("Nom")
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -456,7 +549,10 @@ fun EcranInscription(onRetour: () -> Unit) {
                 prenom = it
                 erreur = null
             },
-            label = { Text("Prénom") },
+            enabled = formulaireActif,
+            label = {
+                Text("Prénom")
+            },
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
         )
@@ -467,7 +563,10 @@ fun EcranInscription(onRetour: () -> Unit) {
                 email = it
                 erreur = null
             },
-            label = { Text("Adresse e-mail") },
+            enabled = formulaireActif,
+            label = {
+                Text("Adresse e-mail")
+            },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email
             ),
@@ -479,8 +578,13 @@ fun EcranInscription(onRetour: () -> Unit) {
             OutlinedTextField(
                 value = dateNaissance,
                 onValueChange = {},
-                label = { Text("Date de naissance") },
-                placeholder = { Text("JJ/MM/AAAA") },
+                enabled = formulaireActif,
+                label = {
+                    Text("Date de naissance")
+                },
+                placeholder = {
+                    Text("JJ/MM/AAAA")
+                },
                 readOnly = true,
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth()
@@ -490,6 +594,7 @@ fun EcranInscription(onRetour: () -> Unit) {
                 modifier = Modifier
                     .matchParentSize()
                     .clickable(
+                        enabled = formulaireActif,
                         onClickLabel = "Choisir la date de naissance"
                     ) {
                         afficherCalendrier = true
@@ -503,7 +608,10 @@ fun EcranInscription(onRetour: () -> Unit) {
                 cin = saisie.filter { it in '0'..'9' }
                 erreur = null
             },
-            label = { Text("Numéro de CIN") },
+            enabled = formulaireActif,
+            label = {
+                Text("Numéro de CIN")
+            },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Number
             ),
@@ -517,7 +625,8 @@ fun EcranInscription(onRetour: () -> Unit) {
                 motDePasse = it
                 erreur = null
             },
-            libelle = "Mot de passe"
+            libelle = "Mot de passe",
+            enabled = formulaireActif
         )
 
         Text(
@@ -531,17 +640,26 @@ fun EcranInscription(onRetour: () -> Unit) {
                 confirmation = it
                 erreur = null
             },
-            libelle = "Confirmer le mot de passe"
+            libelle = "Confirmer le mot de passe",
+            enabled = formulaireActif
         )
 
-        erreur?.let {
+        erreur?.let { message ->
             Text(
-                text = it,
+                text = message,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        etatAuth.erreur?.let { message ->
+            Text(
+                text = message,
                 color = MaterialTheme.colorScheme.error
             )
         }
 
         Button(
+            enabled = formulaireActif,
             onClick = {
                 erreur = when {
                     nom.isBlank() || prenom.isBlank() ->
@@ -567,24 +685,38 @@ fun EcranInscription(onRetour: () -> Unit) {
                     else -> null
                 }
 
-                formulaireValide = erreur == null
+                if (erreur == null) {
+                    authViewModel.inscrire(
+                        email = email,
+                        motDePasse = motDePasse
+                    )
+                }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .heightIn(min = 52.dp)
         ) {
-            Text("Créer mon compte")
+            Text(
+                if (etatAuth.chargement) {
+                    "Création en cours..."
+                } else {
+                    "Créer mon compte"
+                }
+            )
         }
 
         Text(
-            text = "Prototype pédagogique : utilise des données fictives.",
+            text = "Pour les essais, utilise des informations " +
+                    "d’identité fictives et une adresse e-mail que tu contrôles.",
             style = MaterialTheme.typography.bodySmall
         )
     }
 
     if (afficherCalendrier) {
         DatePickerDialog(
-            onDismissRequest = { afficherCalendrier = false },
+            onDismissRequest = {
+                afficherCalendrier = false
+            },
             confirmButton = {
                 TextButton(
                     enabled = calendrier.selectedDateMillis != null,
@@ -609,7 +741,9 @@ fun EcranInscription(onRetour: () -> Unit) {
             },
             dismissButton = {
                 TextButton(
-                    onClick = { afficherCalendrier = false }
+                    onClick = {
+                        afficherCalendrier = false
+                    }
                 ) {
                     Text("Annuler")
                 }
@@ -622,19 +756,18 @@ fun EcranInscription(onRetour: () -> Unit) {
         }
     }
 
-    if (formulaireValide) {
+    if (etatAuth.compteCree) {
         BoiteInformation(
-            titre = "Formulaire valide",
-            message = "Les champs sont correctement renseignés. " +
-                    "La création réelle du compte sera disponible " +
-                    "après le branchement de l’authentification. " +
-                    "Aucun compte n’a encore été créé.",
-            onFermer = { formulaireValide = false }
+            titre = "Compte créé",
+            message = "Ton compte e-mail/mot de passe a été créé. " +
+                    "L’enregistrement du nom, de la date de naissance " +
+                    "et du CIN sera ajouté à la prochaine étape.",
+            onFermer = onRetour
         )
     }
 }
 
-// Vérification de la date choisie.
+// Vérifie le format et la validité de la date.
 fun dateNaissanceValide(valeur: String): Boolean {
     if (!valeur.matches(Regex("""\d{2}/\d{2}/\d{4}"""))) {
         return false
@@ -655,7 +788,7 @@ fun dateNaissanceValide(valeur: String): Boolean {
             !date.after(Date())
 }
 
-// Boîte de dialogue commune aux deux formulaires.
+// Boîte de dialogue réutilisable.
 @Composable
 fun BoiteInformation(
     titre: String,
@@ -664,8 +797,12 @@ fun BoiteInformation(
 ) {
     AlertDialog(
         onDismissRequest = onFermer,
-        title = { Text(titre) },
-        text = { Text(message) },
+        title = {
+            Text(titre)
+        },
+        text = {
+            Text(message)
+        },
         confirmButton = {
             TextButton(onClick = onFermer) {
                 Text("Compris")

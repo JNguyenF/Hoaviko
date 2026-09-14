@@ -60,42 +60,68 @@ class MainActivity : ComponentActivity() {
 
 // Navigation entre les écrans.
 @Composable
-fun NavigationHoaviko() {
-    val navController = rememberNavController()
+fun NavigationHoaviko(
+    authViewModel: AuthViewModel = viewModel()
+) {
+    val session by authViewModel.session.collectAsState()
 
-    NavHost(
-        navController = navController,
-        startDestination = "bienvenue"
-    ) {
-        composable("bienvenue") {
-            EcranBienvenue(
-                onConnexion = {
-                    navController.navigate("connexion") {
-                        launchSingleTop = true
-                    }
-                },
-                onInscription = {
-                    navController.navigate("inscription") {
-                        launchSingleTop = true
-                    }
-                }
-            )
-        }
+    // Un changement d'utilisateur recrée la navigation.
+    // Les anciennes pages ne restent pas dans l'historique.
+    key(session?.uid) {
+        val navController = rememberNavController()
+        val utilisateur = session
 
-        composable("connexion") {
-            EcranConnexion(
-                onRetour = {
-                    navController.popBackStack()
+        NavHost(
+            navController = navController,
+            startDestination = if (utilisateur != null) {
+                "espace"
+            } else {
+                "bienvenue"
+            }
+        ) {
+            if (utilisateur != null) {
+                composable("espace") {
+                    EcranEspacePersonnel(
+                        email = utilisateur.email,
+                        onDeconnexion = {
+                            authViewModel.deconnecter()
+                        }
+                    )
                 }
-            )
-        }
+            } else {
+                composable("bienvenue") {
+                    EcranBienvenue(
+                        onConnexion = {
+                            navController.navigate("connexion") {
+                                launchSingleTop = true
+                            }
+                        },
+                        onInscription = {
+                            navController.navigate("inscription") {
+                                launchSingleTop = true
+                            }
+                        }
+                    )
+                }
 
-        composable("inscription") {
-            EcranInscription(
-                onRetour = {
-                    navController.popBackStack()
+                composable("connexion") {
+                    EcranConnexion(
+                        onRetour = {
+                            navController.popBackStack()
+                        },
+                        authViewModel = authViewModel
+                    )
                 }
-            )
+
+                composable("inscription") {
+                    EcranInscription(
+                        onRetour = {
+                            navController.popBackStack()
+                        },
+                        authViewModel = authViewModel
+                    )
+                }
+            }
         }
     }
 }
@@ -321,7 +347,12 @@ fun ChampMotDePasse(
 
 // Formulaire de connexion : branchement Firebase à venir.
 @Composable
-fun EcranConnexion(onRetour: () -> Unit) {
+fun EcranConnexion(
+    onRetour: () -> Unit,
+    authViewModel: AuthViewModel = viewModel()
+) {
+    val etat by authViewModel.connexionState.collectAsState()
+
     var email by rememberSaveable {
         mutableStateOf("")
     }
@@ -330,103 +361,127 @@ fun EcranConnexion(onRetour: () -> Unit) {
         mutableStateOf("")
     }
 
-    var erreur by remember {
+    var erreurLocale by remember {
         mutableStateOf<String?>(null)
     }
 
-    var afficherInformation by remember {
-        mutableStateOf(false)
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        TextButton(onClick = onRetour) {
-            Text("Retour")
-        }
-
-        Text(
-            text = "Se connecter",
-            style = MaterialTheme.typography.headlineLarge,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Text(
-            text = "Retrouvez votre espace Hoaviko.",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        OutlinedTextField(
-            value = email,
-            onValueChange = {
-                email = it
-                erreur = null
-            },
-            label = {
-                Text("Adresse e-mail")
-            },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Email
-            ),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        ChampMotDePasse(
-            valeur = motDePasse,
-            onValeurChange = {
-                motDePasse = it
-                erreur = null
-            },
-            libelle = "Mot de passe"
-        )
-
-        erreur?.let { message ->
-            Text(
-                text = message,
-                color = MaterialTheme.colorScheme.error
-            )
-        }
-
-        Button(
-            onClick = {
-                erreur = when {
-                    !Patterns.EMAIL_ADDRESS
-                        .matcher(email.trim()).matches() ->
-                        "Renseigne une adresse e-mail valide."
-
-                    motDePasse.isBlank() ->
-                        "Renseigne ton mot de passe."
-
-                    else -> null
-                }
-
-                afficherInformation = erreur == null
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 52.dp)
-        ) {
-            Text("Se connecter")
+    LaunchedEffect(etat.emailConnecte) {
+        if (etat.emailConnecte != null) {
+            motDePasse = ""
+            erreurLocale = null
         }
     }
 
-    if (afficherInformation) {
-        BoiteInformation(
-            titre = "Connexion à brancher",
-            message = "Le formulaire est correctement rempli. " +
-                    "Nous relierons cet écran à Firebase " +
-                    "à la prochaine étape.",
-            onFermer = {
-                afficherInformation = false
+    val emailUtilisateur = etat.emailConnecte
+
+    if (emailUtilisateur != null) {
+        EcranEspacePersonnel(
+            email = emailUtilisateur,
+            onDeconnexion = {
+                authViewModel.deconnecter()
+                onRetour()
             }
         )
+    } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .safeDrawingPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            TextButton(
+                onClick = onRetour,
+                enabled = !etat.chargement
+            ) {
+                Text("Retour")
+            }
+
+            Text(
+                text = "Se connecter",
+                style = MaterialTheme.typography.headlineLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+
+            Text(
+                text = "Retrouvez votre espace Hoaviko.",
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+            OutlinedTextField(
+                value = email,
+                onValueChange = {
+                    email = it
+                    erreurLocale = null
+                    authViewModel.effacerErreurConnexion()
+                },
+                enabled = !etat.chargement,
+                label = {
+                    Text("Adresse e-mail")
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email
+                ),
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            ChampMotDePasse(
+                valeur = motDePasse,
+                onValeurChange = {
+                    motDePasse = it
+                    erreurLocale = null
+                    authViewModel.effacerErreurConnexion()
+                },
+                libelle = "Mot de passe",
+                enabled = !etat.chargement
+            )
+
+            val messageErreur = erreurLocale ?: etat.erreur
+
+            messageErreur?.let { message ->
+                Text(
+                    text = message,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+
+            Button(
+                enabled = !etat.chargement,
+                onClick = {
+                    erreurLocale = when {
+                        !Patterns.EMAIL_ADDRESS
+                            .matcher(email.trim()).matches() ->
+                            "Renseigne une adresse e-mail valide."
+
+                        motDePasse.isBlank() ->
+                            "Renseigne ton mot de passe."
+
+                        else -> null
+                    }
+
+                    if (erreurLocale == null) {
+                        authViewModel.connecter(
+                            email = email,
+                            motDePasse = motDePasse
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 52.dp)
+            ) {
+                Text(
+                    if (etat.chargement) {
+                        "Connexion en cours..."
+                    } else {
+                        "Se connecter"
+                    }
+                )
+            }
+        }
     }
 }
 
@@ -755,16 +810,6 @@ fun EcranInscription(
             )
         }
     }
-
-    if (etatAuth.compteCree) {
-        BoiteInformation(
-            titre = "Compte créé",
-            message = "Ton compte e-mail/mot de passe a été créé. " +
-                    "L’enregistrement du nom, de la date de naissance " +
-                    "et du CIN sera ajouté à la prochaine étape.",
-            onFermer = onRetour
-        )
-    }
 }
 
 // Vérifie le format et la validité de la date.
@@ -809,4 +854,66 @@ fun BoiteInformation(
             }
         }
     )
+
+}
+@Composable
+fun EcranEspacePersonnel(
+    email: String,
+    onDeconnexion: () -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
+    ) {
+        Text(
+            text = "Hoaviko",
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            style = MaterialTheme.typography.displayMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Text(
+            text = "Mon espace personnel",
+            style = MaterialTheme.typography.headlineSmall
+        )
+
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Bienvenue !",
+                    style = MaterialTheme.typography.titleLarge
+                )
+
+                Text(text = email)
+
+                Text(
+                    text = "Vous avez accès à votre espace Hoaviko."
+                )
+            }
+        }
+
+        Text(
+            text = "Votre profil et le suivi de vos cotisations " +
+                    "seront disponibles dans les prochaines étapes.",
+            style = MaterialTheme.typography.bodyLarge
+        )
+
+        OutlinedButton(
+            onClick = onDeconnexion,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+        ) {
+            Text("Se déconnecter")
+        }
+    }
 }

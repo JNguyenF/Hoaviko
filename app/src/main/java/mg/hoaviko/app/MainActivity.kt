@@ -78,7 +78,7 @@ fun NavigationHoaviko(
         ) {
             if (utilisateur != null) {
                 composable("espace") {
-                    EcranCompte(
+                    EcranOrientationCompte(
                         email = utilisateur.email,
                         onDeconnexion = {
                             authViewModel.deconnecter()
@@ -552,6 +552,7 @@ fun EcranInscription(
             },
             modifier = Modifier
                 .fillMaxWidth()
+                .heightIn(min = 52.dp)
                 .heightIn(min = 52.dp)
         ) {
             Text(

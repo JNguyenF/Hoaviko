@@ -15,6 +15,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @Composable
 fun EcranCotisations(
@@ -23,6 +24,19 @@ fun EcranCotisations(
     onDeconnexion: () -> Unit,
     cotisationViewModel: CotisationViewModel = viewModel()
 ) {
+    var afficherDemande by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (afficherDemande) {
+        EcranDemandesRetraite(
+            administrateur = false,
+            onRetour = {
+                afficherDemande = false
+            }
+        )
+        return
+    }
     val etat by cotisationViewModel.uiState.collectAsState()
     val formulaire = etat.formulaire
 
@@ -271,7 +285,17 @@ fun EcranCotisations(
                 }
             }
         }
-
+        item {
+            OutlinedButton(
+                onClick = {
+                    afficherDemande = true
+                },
+                enabled = !formulaire.enregistrement,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Ma demande de retraite anticipée")
+            }
+        }
         // Déconnexion.
         item {
             OutlinedButton(

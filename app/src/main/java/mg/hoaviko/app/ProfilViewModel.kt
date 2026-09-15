@@ -47,42 +47,101 @@ class ProfilViewModel : ViewModel() {
 
         _uiState.value = EtatProfil()
 
-        db.collection("utilisateurs")
-            .document(uid)
-            .get(Source.SERVER)
+        val reference = db.collection("utilisateurs").document(uid)
+
+        // Transforme le document Firestore en profil.
+        fun lireProfil(
+            document: com.google.firebase.firestore.DocumentSnapshot
+        ): ProfilUtilisateur {
+            return ProfilUtilisateur(
+                nom = document.getString("nom").orEmpty(),
+                prenom = document.getString("prenom").orEmpty(),
+                dateNaissance = document
+                    .getString("dateNaissance").orEmpty(),
+                cin = document.getString("cin").orEmpty()
+            )
+        }
+
+        // Actualise le profil lorsque le serveur est accessible.
+        fun actualiserDepuisServeur() {
+            reference.get(Source.SERVER)
+                .addOnSuccessListener { document ->
+                    if (auth.currentUser?.uid != uid) {
+                        return@addOnSuccessListener
+                    }
+
+                    _uiState.value = EtatProfil(
+                        chargement = false,
+                        lectureReussie = true,
+                        profil = if (document.exists()) {
+                            lireProfil(document)
+                        } else {
+                            null
+                        }
+                    )
+                }
+                .addOnFailureListener { exception ->
+                    if (auth.currentUser?.uid != uid) {
+                        return@addOnFailureListener
+                    }
+
+                    val code = (
+                            exception as?
+                                    com.google.firebase.firestore.FirebaseFirestoreException
+                            )?.code
+
+                    val accesRefuse =
+                        code == com.google.firebase.firestore
+                            .FirebaseFirestoreException.Code.PERMISSION_DENIED ||
+                                code == com.google.firebase.firestore
+                            .FirebaseFirestoreException.Code.UNAUTHENTICATED
+
+                    if (accesRefuse) {
+                        _uiState.value = EtatProfil(
+                            chargement = false,
+                            erreur = "Accès au profil refusé. " +
+                                    "Vérifie ta connexion au compte " +
+                                    "et les règles Firestore."
+                        )
+                    } else if (_uiState.value.profil == null) {
+                        // Sans copie locale, on ne peut pas ouvrir le profil.
+                        _uiState.value = EtatProfil(
+                            chargement = false,
+                            erreur = "Aucun profil disponible sur ce téléphone. " +
+                                    "Connecte-toi à Internet puis appuie sur Réessayer."
+                        )
+                    }
+
+                    // Si un profil local est déjà affiché,
+                    // une panne réseau ne bloque pas l'application.
+                }
+        }
+
+        // Commence par la copie locale : pas d'attente du réseau.
+        reference.get(Source.CACHE)
             .addOnSuccessListener { document ->
                 if (auth.currentUser?.uid != uid) {
                     return@addOnSuccessListener
                 }
 
-                val profil = if (document.exists()) {
-                    ProfilUtilisateur(
-                        nom = document.getString("nom").orEmpty(),
-                        prenom = document.getString("prenom").orEmpty(),
-                        dateNaissance = document
-                            .getString("dateNaissance").orEmpty(),
-                        cin = document.getString("cin").orEmpty()
+                if (document.exists()) {
+                    _uiState.value = EtatProfil(
+                        chargement = false,
+                        lectureReussie = true,
+                        profil = lireProfil(document)
                     )
-                } else {
-                    null
                 }
 
-                _uiState.value = EtatProfil(
-                    chargement = false,
-                    lectureReussie = true,
-                    profil = profil
-                )
+                // L'absence dans le cache ne prouve pas que le profil
+                // est absent du serveur : il faut le vérifier.
+                actualiserDepuisServeur()
             }
             .addOnFailureListener {
                 if (auth.currentUser?.uid != uid) {
                     return@addOnFailureListener
                 }
 
-                _uiState.value = EtatProfil(
-                    chargement = false,
-                    erreur = "Impossible de charger le profil. " +
-                            "Vérifie Internet et les règles Firestore."
-                )
+                actualiserDepuisServeur()
             }
     }
 

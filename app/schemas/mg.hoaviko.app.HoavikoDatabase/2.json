@@ -1,0 +1,73 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 2,
+    "identityHash": "bcc7b684a6e3746c694a5c811e4a161d",
+    "entities": [
+      {
+        "tableName": "cotisations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `utilisateurId` TEXT NOT NULL, `montantAr` INTEGER NOT NULL, `dateVersement` INTEGER NOT NULL, `simulee` INTEGER NOT NULL, `modeVersement` TEXT NOT NULL DEFAULT 'Non renseigné')",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "utilisateurId",
+            "columnName": "utilisateurId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "montantAr",
+            "columnName": "montantAr",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateVersement",
+            "columnName": "dateVersement",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "simulee",
+            "columnName": "simulee",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modeVersement",
+            "columnName": "modeVersement",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Non renseigné'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cotisations_utilisateurId",
+            "unique": false,
+            "columnNames": [
+              "utilisateurId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cotisations_utilisateurId` ON `${TABLE_NAME}` (`utilisateurId`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bcc7b684a6e3746c694a5c811e4a161d')"
+    ]
+  }
+}

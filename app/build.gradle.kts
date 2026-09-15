@@ -1,9 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
+
     id("com.google.gms.google-services")
 }
-
 android {
     namespace = "mg.hoaviko.app"
 
@@ -40,10 +41,15 @@ android {
 }
 
 dependencies {
+
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
     implementation("com.google.firebase:firebase-auth")
 
     implementation("androidx.navigation:navigation-compose:2.9.7")
+    implementation("com.google.firebase:firebase-firestore")
 
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.activity.compose)
@@ -63,4 +69,7 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
+}
+extensions.configure<com.google.devtools.ksp.gradle.KspExtension> {
+    arg("room.schemaLocation", "$projectDir/schemas")
 }

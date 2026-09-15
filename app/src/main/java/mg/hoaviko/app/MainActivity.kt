@@ -4,7 +4,6 @@ import android.os.Bundle
 import android.util.Patterns
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -26,14 +25,13 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import java.text.ParsePosition
 import java.text.SimpleDateFormat
-import java.util.Calendar
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
 private val VertHoaviko = Color(0xFF146B50)
 
-// Point d'entrée de l'application.
+// Démarrage de l'application.
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -58,15 +56,14 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-// Navigation entre les écrans.
+// Un seul AuthViewModel est partagé entre les écrans.
 @Composable
 fun NavigationHoaviko(
     authViewModel: AuthViewModel = viewModel()
 ) {
     val session by authViewModel.session.collectAsState()
 
-    // Un changement d'utilisateur recrée la navigation.
-    // Les anciennes pages ne restent pas dans l'historique.
+    // Recrée la navigation quand la session change.
     key(session?.uid) {
         val navController = rememberNavController()
         val utilisateur = session
@@ -81,7 +78,7 @@ fun NavigationHoaviko(
         ) {
             if (utilisateur != null) {
                 composable("espace") {
-                    EcranEspacePersonnel(
+                    EcranCompte(
                         email = utilisateur.email,
                         onDeconnexion = {
                             authViewModel.deconnecter()
@@ -135,7 +132,7 @@ fun formatMontant(valeur: Long): String {
         .reversed()
 }
 
-// Accueil public : fonctionne sans Internet.
+// Accueil public et simulateur sans Internet.
 @Composable
 fun EcranBienvenue(
     onConnexion: () -> Unit,
@@ -152,8 +149,6 @@ fun EcranBienvenue(
     val montant = montantMensuel.toLongOrNull() ?: 0L
     val annees = dureeAnnees.toLongOrNull() ?: 0L
     val saisieValide = montant > 0L && annees > 0L
-
-    // Versement mensuel × 12 mois × nombre d'années.
     val total = montant * 12L * annees
 
     Column(
@@ -200,9 +195,7 @@ fun EcranBienvenue(
                     fontWeight = FontWeight.Bold
                 )
 
-                Text(
-                    text = "Disponible sans Internet et sans compte."
-                )
+                Text("Disponible sans Internet et sans compte.")
 
                 OutlinedTextField(
                     value = montantMensuel,
@@ -211,9 +204,7 @@ fun EcranBienvenue(
                             .filter { it in '0'..'9' }
                             .take(9)
                     },
-                    label = {
-                        Text("Versement mensuel (Ar)")
-                    },
+                    label = { Text("Versement mensuel (Ar)") },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number
                     ),
@@ -228,9 +219,7 @@ fun EcranBienvenue(
                             .filter { it in '0'..'9' }
                             .take(2)
                     },
-                    label = {
-                        Text("Durée en années")
-                    },
+                    label = { Text("Durée en années") },
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Number
                     ),
@@ -248,11 +237,11 @@ fun EcranBienvenue(
                         color = MaterialTheme.colorScheme.primary
                     )
 
-                    val uniteAnnee = if (annees == 1L) "an" else "ans"
+                    val unite = if (annees == 1L) "an" else "ans"
 
                     Text(
                         text = "${formatMontant(montant)} Ar par mois " +
-                                "pendant $annees $uniteAnnee"
+                                "pendant $annees $unite"
                     )
                 } else {
                     Text(
@@ -272,8 +261,7 @@ fun EcranBienvenue(
         }
 
         Text(
-            text = "Accédez à votre espace pour suivre vos cotisations.",
-            style = MaterialTheme.typography.bodyLarge
+            text = "Accédez à votre espace pour suivre vos cotisations."
         )
 
         Button(
@@ -303,7 +291,7 @@ fun EcranBienvenue(
     }
 }
 
-// Champ de mot de passe réutilisable.
+// Champ de mot de passe commun aux deux formulaires.
 @Composable
 fun ChampMotDePasse(
     valeur: String,
@@ -317,9 +305,7 @@ fun ChampMotDePasse(
         value = valeur,
         onValueChange = onValeurChange,
         enabled = enabled,
-        label = {
-            Text(libelle)
-        },
+        label = { Text(libelle) },
         visualTransformation = if (visible) {
             VisualTransformation.None
         } else {
@@ -328,13 +314,9 @@ fun ChampMotDePasse(
         trailingIcon = {
             TextButton(
                 enabled = enabled,
-                onClick = {
-                    visible = !visible
-                }
+                onClick = { visible = !visible }
             ) {
-                Text(
-                    if (visible) "Masquer" else "Afficher"
-                )
+                Text(if (visible) "Masquer" else "Afficher")
             }
         },
         keyboardOptions = KeyboardOptions(
@@ -345,7 +327,8 @@ fun ChampMotDePasse(
     )
 }
 
-// Formulaire de connexion : branchement Firebase à venir.
+// Connexion réelle.
+// NavigationHoaviko ouvre l'espace quand la session change.
 @Composable
 fun EcranConnexion(
     onRetour: () -> Unit,
@@ -353,209 +336,9 @@ fun EcranConnexion(
 ) {
     val etat by authViewModel.connexionState.collectAsState()
 
-    var email by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var motDePasse by remember {
-        mutableStateOf("")
-    }
-
-    var erreurLocale by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    LaunchedEffect(etat.emailConnecte) {
-        if (etat.emailConnecte != null) {
-            motDePasse = ""
-            erreurLocale = null
-        }
-    }
-
-    val emailUtilisateur = etat.emailConnecte
-
-    if (emailUtilisateur != null) {
-        EcranEspacePersonnel(
-            email = emailUtilisateur,
-            onDeconnexion = {
-                authViewModel.deconnecter()
-                onRetour()
-            }
-        )
-    } else {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .safeDrawingPadding()
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            TextButton(
-                onClick = onRetour,
-                enabled = !etat.chargement
-            ) {
-                Text("Retour")
-            }
-
-            Text(
-                text = "Se connecter",
-                style = MaterialTheme.typography.headlineLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-
-            Text(
-                text = "Retrouvez votre espace Hoaviko.",
-                style = MaterialTheme.typography.bodyLarge
-            )
-
-            OutlinedTextField(
-                value = email,
-                onValueChange = {
-                    email = it
-                    erreurLocale = null
-                    authViewModel.effacerErreurConnexion()
-                },
-                enabled = !etat.chargement,
-                label = {
-                    Text("Adresse e-mail")
-                },
-                keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email
-                ),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            ChampMotDePasse(
-                valeur = motDePasse,
-                onValeurChange = {
-                    motDePasse = it
-                    erreurLocale = null
-                    authViewModel.effacerErreurConnexion()
-                },
-                libelle = "Mot de passe",
-                enabled = !etat.chargement
-            )
-
-            val messageErreur = erreurLocale ?: etat.erreur
-
-            messageErreur?.let { message ->
-                Text(
-                    text = message,
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-
-            Button(
-                enabled = !etat.chargement,
-                onClick = {
-                    erreurLocale = when {
-                        !Patterns.EMAIL_ADDRESS
-                            .matcher(email.trim()).matches() ->
-                            "Renseigne une adresse e-mail valide."
-
-                        motDePasse.isBlank() ->
-                            "Renseigne ton mot de passe."
-
-                        else -> null
-                    }
-
-                    if (erreurLocale == null) {
-                        authViewModel.connecter(
-                            email = email,
-                            motDePasse = motDePasse
-                        )
-                    }
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 52.dp)
-            ) {
-                Text(
-                    if (etat.chargement) {
-                        "Connexion en cours..."
-                    } else {
-                        "Se connecter"
-                    }
-                )
-            }
-        }
-    }
-}
-
-// Inscription réelle avec Firebase Authentication.
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun EcranInscription(
-    onRetour: () -> Unit,
-    authViewModel: AuthViewModel = viewModel()
-) {
-    val etatAuth by authViewModel.uiState.collectAsState()
-
-    var nom by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var prenom by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var email by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var dateNaissance by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    var cin by rememberSaveable {
-        mutableStateOf("")
-    }
-
-    // Les mots de passe ne sont pas sauvegardés sur le téléphone.
-    var motDePasse by remember {
-        mutableStateOf("")
-    }
-
-    var confirmation by remember {
-        mutableStateOf("")
-    }
-
-    var erreur by remember {
-        mutableStateOf<String?>(null)
-    }
-
-    var afficherCalendrier by remember {
-        mutableStateOf(false)
-    }
-
-    val formulaireActif =
-        !etatAuth.chargement && !etatAuth.compteCree
-
-    val calendrier = rememberDatePickerState(
-        selectableDates = object : SelectableDates {
-            override fun isSelectableDate(
-                utcTimeMillis: Long
-            ): Boolean {
-                return utcTimeMillis <= System.currentTimeMillis()
-            }
-
-            override fun isSelectableYear(year: Int): Boolean {
-                return year <= Calendar.getInstance()
-                    .get(Calendar.YEAR)
-            }
-        }
-    )
-
-    // Efface les mots de passe dès que le compte est créé.
-    LaunchedEffect(etatAuth.compteCree) {
-        if (etatAuth.compteCree) {
-            motDePasse = ""
-            confirmation = ""
-        }
-    }
+    var email by rememberSaveable { mutableStateOf("") }
+    var motDePasse by remember { mutableStateOf("") }
+    var erreurLocale by remember { mutableStateOf<String?>(null) }
 
     Column(
         modifier = Modifier
@@ -564,11 +347,122 @@ fun EcranInscription(
             .imePadding()
             .verticalScroll(rememberScrollState())
             .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         TextButton(
             onClick = onRetour,
-            enabled = !etatAuth.chargement
+            enabled = !etat.chargement
+        ) {
+            Text("Retour")
+        }
+
+        Text(
+            text = "Se connecter",
+            style = MaterialTheme.typography.headlineLarge,
+            color = MaterialTheme.colorScheme.primary
+        )
+
+        Text("Retrouvez votre espace Hoaviko.")
+
+        OutlinedTextField(
+            value = email,
+            onValueChange = {
+                email = it
+                erreurLocale = null
+                authViewModel.effacerErreurConnexion()
+            },
+            enabled = !etat.chargement,
+            label = { Text("Adresse e-mail") },
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Email
+            ),
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth()
+        )
+
+        ChampMotDePasse(
+            valeur = motDePasse,
+            onValeurChange = {
+                motDePasse = it
+                erreurLocale = null
+                authViewModel.effacerErreurConnexion()
+            },
+            libelle = "Mot de passe",
+            enabled = !etat.chargement
+        )
+
+        val messageErreur = erreurLocale ?: etat.erreur
+
+        messageErreur?.let { message ->
+            Text(
+                text = message,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+
+        Button(
+            enabled = !etat.chargement,
+            onClick = {
+                erreurLocale = when {
+                    !Patterns.EMAIL_ADDRESS
+                        .matcher(email.trim()).matches() ->
+                        "Renseigne une adresse e-mail valide."
+
+                    motDePasse.isBlank() ->
+                        "Renseigne ton mot de passe."
+
+                    else -> null
+                }
+
+                if (erreurLocale == null) {
+                    authViewModel.connecter(
+                        email = email,
+                        motDePasse = motDePasse
+                    )
+                }
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
+        ) {
+            Text(
+                if (etat.chargement) {
+                    "Connexion en cours..."
+                } else {
+                    "Se connecter"
+                }
+            )
+        }
+    }
+}
+
+// L'identité sera renseignée dans EcranCompleterProfil.
+@Composable
+fun EcranInscription(
+    onRetour: () -> Unit,
+    authViewModel: AuthViewModel = viewModel()
+) {
+    val etat by authViewModel.uiState.collectAsState()
+
+    var email by rememberSaveable { mutableStateOf("") }
+    var motDePasse by remember { mutableStateOf("") }
+    var confirmation by remember { mutableStateOf("") }
+    var erreurLocale by remember { mutableStateOf<String?>(null) }
+
+    val formulaireActif = !etat.chargement && !etat.compteCree
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .safeDrawingPadding()
+            .imePadding()
+            .verticalScroll(rememberScrollState())
+            .padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        TextButton(
+            onClick = onRetour,
+            enabled = !etat.chargement
         ) {
             Text("Retour")
         }
@@ -580,95 +474,19 @@ fun EcranInscription(
         )
 
         Text(
-            text = "Bienvenue sur Hoaviko",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        OutlinedTextField(
-            value = nom,
-            onValueChange = {
-                nom = it
-                erreur = null
-            },
-            enabled = formulaireActif,
-            label = {
-                Text("Nom")
-            },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        OutlinedTextField(
-            value = prenom,
-            onValueChange = {
-                prenom = it
-                erreur = null
-            },
-            enabled = formulaireActif,
-            label = {
-                Text("Prénom")
-            },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+            text = "Créez votre compte, puis complétez votre profil."
         )
 
         OutlinedTextField(
             value = email,
             onValueChange = {
                 email = it
-                erreur = null
+                erreurLocale = null
             },
             enabled = formulaireActif,
-            label = {
-                Text("Adresse e-mail")
-            },
+            label = { Text("Adresse e-mail") },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Email
-            ),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Box(modifier = Modifier.fillMaxWidth()) {
-            OutlinedTextField(
-                value = dateNaissance,
-                onValueChange = {},
-                enabled = formulaireActif,
-                label = {
-                    Text("Date de naissance")
-                },
-                placeholder = {
-                    Text("JJ/MM/AAAA")
-                },
-                readOnly = true,
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .clickable(
-                        enabled = formulaireActif,
-                        onClickLabel = "Choisir la date de naissance"
-                    ) {
-                        afficherCalendrier = true
-                    }
-            )
-        }
-
-        OutlinedTextField(
-            value = cin,
-            onValueChange = { saisie ->
-                cin = saisie.filter { it in '0'..'9' }
-                erreur = null
-            },
-            enabled = formulaireActif,
-            label = {
-                Text("Numéro de CIN")
-            },
-            keyboardOptions = KeyboardOptions(
-                keyboardType = KeyboardType.Number
             ),
             singleLine = true,
             modifier = Modifier.fillMaxWidth()
@@ -678,7 +496,7 @@ fun EcranInscription(
             valeur = motDePasse,
             onValeurChange = {
                 motDePasse = it
-                erreur = null
+                erreurLocale = null
             },
             libelle = "Mot de passe",
             enabled = formulaireActif
@@ -693,20 +511,15 @@ fun EcranInscription(
             valeur = confirmation,
             onValeurChange = {
                 confirmation = it
-                erreur = null
+                erreurLocale = null
             },
             libelle = "Confirmer le mot de passe",
             enabled = formulaireActif
         )
 
-        erreur?.let { message ->
-            Text(
-                text = message,
-                color = MaterialTheme.colorScheme.error
-            )
-        }
+        val messageErreur = erreurLocale ?: etat.erreur
 
-        etatAuth.erreur?.let { message ->
+        messageErreur?.let { message ->
             Text(
                 text = message,
                 color = MaterialTheme.colorScheme.error
@@ -716,23 +529,13 @@ fun EcranInscription(
         Button(
             enabled = formulaireActif,
             onClick = {
-                erreur = when {
-                    nom.isBlank() || prenom.isBlank() ->
-                        "Renseigne ton nom et ton prénom."
-
+                erreurLocale = when {
                     !Patterns.EMAIL_ADDRESS
                         .matcher(email.trim()).matches() ->
                         "Renseigne une adresse e-mail valide."
 
-                    !dateNaissanceValide(dateNaissance) ->
-                        "Choisis une date de naissance valide."
-
-                    cin.isBlank() ->
-                        "Renseigne ton numéro de CIN."
-
                     motDePasse.length < 8 ->
-                        "Le mot de passe doit contenir " +
-                                "au moins 8 caractères."
+                        "Le mot de passe doit contenir au moins 8 caractères."
 
                     motDePasse != confirmation ->
                         "Les mots de passe ne correspondent pas."
@@ -740,7 +543,7 @@ fun EcranInscription(
                     else -> null
                 }
 
-                if (erreur == null) {
+                if (erreurLocale == null) {
                     authViewModel.inscrire(
                         email = email,
                         motDePasse = motDePasse
@@ -752,67 +555,31 @@ fun EcranInscription(
                 .heightIn(min = 52.dp)
         ) {
             Text(
-                if (etatAuth.chargement) {
+                if (etat.chargement) {
                     "Création en cours..."
                 } else {
                     "Créer mon compte"
                 }
             )
         }
-
-        Text(
-            text = "Pour les essais, utilise des informations " +
-                    "d’identité fictives et une adresse e-mail que tu contrôles.",
-            style = MaterialTheme.typography.bodySmall
-        )
-    }
-
-    if (afficherCalendrier) {
-        DatePickerDialog(
-            onDismissRequest = {
-                afficherCalendrier = false
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = calendrier.selectedDateMillis != null,
-                    onClick = {
-                        calendrier.selectedDateMillis?.let { millis ->
-                            val format = SimpleDateFormat(
-                                "dd/MM/yyyy",
-                                Locale.FRANCE
-                            ).apply {
-                                timeZone = TimeZone.getTimeZone("UTC")
-                            }
-
-                            dateNaissance = format.format(Date(millis))
-                            erreur = null
-                        }
-
-                        afficherCalendrier = false
-                    }
-                ) {
-                    Text("Valider")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        afficherCalendrier = false
-                    }
-                ) {
-                    Text("Annuler")
-                }
-            }
-        ) {
-            DatePicker(
-                state = calendrier,
-                showModeToggle = false
-            )
-        }
     }
 }
 
-// Vérifie le format et la validité de la date.
+// Première version de l'espace personnel.
+@Composable
+fun EcranEspacePersonnel(
+    email: String,
+    onDeconnexion: () -> Unit,
+    prenom: String = ""
+) {
+    EcranCotisations(
+        email = email,
+        prenom = prenom,
+        onDeconnexion = onDeconnexion
+    )
+}
+
+// Utilisée par ProfilViewModel pour vérifier la date.
 fun dateNaissanceValide(valeur: String): Boolean {
     if (!valeur.matches(Regex("""\d{2}/\d{2}/\d{4}"""))) {
         return false
@@ -831,89 +598,4 @@ fun dateNaissanceValide(valeur: String): Boolean {
 
     return position.index == valeur.length &&
             !date.after(Date())
-}
-
-// Boîte de dialogue réutilisable.
-@Composable
-fun BoiteInformation(
-    titre: String,
-    message: String,
-    onFermer: () -> Unit
-) {
-    AlertDialog(
-        onDismissRequest = onFermer,
-        title = {
-            Text(titre)
-        },
-        text = {
-            Text(message)
-        },
-        confirmButton = {
-            TextButton(onClick = onFermer) {
-                Text("Compris")
-            }
-        }
-    )
-
-}
-@Composable
-fun EcranEspacePersonnel(
-    email: String,
-    onDeconnexion: () -> Unit
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .safeDrawingPadding()
-            .verticalScroll(rememberScrollState())
-            .padding(24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
-    ) {
-        Text(
-            text = "Hoaviko",
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = TextAlign.Center,
-            style = MaterialTheme.typography.displayMedium,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-
-        Text(
-            text = "Mon espace personnel",
-            style = MaterialTheme.typography.headlineSmall
-        )
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(
-                modifier = Modifier.padding(20.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Text(
-                    text = "Bienvenue !",
-                    style = MaterialTheme.typography.titleLarge
-                )
-
-                Text(text = email)
-
-                Text(
-                    text = "Vous avez accès à votre espace Hoaviko."
-                )
-            }
-        }
-
-        Text(
-            text = "Votre profil et le suivi de vos cotisations " +
-                    "seront disponibles dans les prochaines étapes.",
-            style = MaterialTheme.typography.bodyLarge
-        )
-
-        OutlinedButton(
-            onClick = onDeconnexion,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 52.dp)
-        ) {
-            Text("Se déconnecter")
-        }
-    }
 }

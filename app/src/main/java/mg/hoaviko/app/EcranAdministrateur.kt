@@ -12,6 +12,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 
+// Oriente le compte selon le rôle vérifié dans Firebase.
 @Composable
 fun EcranOrientationCompte(
     email: String,
@@ -20,19 +21,8 @@ fun EcranOrientationCompte(
 ) {
     val etat by roleViewModel.uiState.collectAsState()
 
-    var espacePersonnel by rememberSaveable {
-        mutableStateOf(false)
-    }
-
     when {
-        espacePersonnel -> {
-            EcranCompte(
-                email = email,
-                onDeconnexion = onDeconnexion
-            )
-        }
-
-        etat.chargement || etat.erreur != null -> {
+        etat.chargement -> {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -40,49 +30,55 @@ fun EcranOrientationCompte(
                     .padding(24.dp),
                 verticalArrangement = Arrangement.Center
             ) {
-                if (etat.chargement) {
-                    CircularProgressIndicator()
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text("Vérification de votre accès...")
-                } else {
-                    Text(
-                        text = etat.erreur.orEmpty(),
-                        color = MaterialTheme.colorScheme.error
-                    )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Button(
-                        onClick = {
-                            roleViewModel.verifierRole()
-                        }
-                    ) {
-                        Text("Réessayer")
-                    }
-                }
+                CircularProgressIndicator()
 
                 Spacer(modifier = Modifier.height(16.dp))
 
-                // Permet l'accès aux données personnelles déjà
-                // disponibles hors ligne, sans accorder de rôle admin.
-                OutlinedButton(
+                Text("Vérification de votre accès...")
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                TextButton(onClick = onDeconnexion) {
+                    Text("Se déconnecter")
+                }
+            }
+        }
+
+        etat.erreur != null -> {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .safeDrawingPadding()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Vérification impossible",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Text(
+                    text = etat.erreur.orEmpty()
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                Button(
                     onClick = {
-                        espacePersonnel = true
+                        roleViewModel.verifierRole()
                     },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Ouvrir mon espace personnel")
+                    Text("Réessayer")
                 }
 
-                Text(
-                    text = "Sans Internet, votre profil doit avoir " +
-                            "déjà été chargé sur ce téléphone.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-
-                TextButton(onClick = onDeconnexion) {
+                TextButton(
+                    onClick = onDeconnexion,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
                     Text("Se déconnecter")
                 }
             }
@@ -91,9 +87,6 @@ fun EcranOrientationCompte(
         etat.administrateur -> {
             EcranAdministrateur(
                 email = email,
-                onEspacePersonnel = {
-                    espacePersonnel = true
-                },
                 onDeconnexion = onDeconnexion
             )
         }
@@ -107,17 +100,27 @@ fun EcranOrientationCompte(
     }
 }
 
+// Espace réservé à l'administration.
 @Composable
-fun EcranAdministrateur
-            (
-
+fun EcranAdministrateur(
     email: String,
-    onEspacePersonnel: () -> Unit,
     onDeconnexion: () -> Unit
-)
-{var afficherDemandes by rememberSaveable {
-    mutableStateOf(false)
-}
+) {
+    var afficherUtilisateurs by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    if (afficherUtilisateurs) {
+        EcranUtilisateursAdmin(
+            onRetour = {
+                afficherUtilisateurs = false
+            }
+        )
+        return
+    }
+    var afficherDemandes by rememberSaveable {
+        mutableStateOf(false)
+    }
 
     if (afficherDemandes) {
         EcranDemandesRetraite(
@@ -128,6 +131,7 @@ fun EcranAdministrateur
         )
         return
     }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -160,41 +164,59 @@ fun EcranAdministrateur
                     style = MaterialTheme.typography.titleLarge
                 )
 
-                Text(email)
+                Text(text = email)
 
                 Text(
-                    text = "Votre rôle a été vérifié auprès de Firebase."
+                    text = "Gérez les demandes de retraite anticipée."
                 )
             }
         }
 
-        Text(
-            text = "Retraite anticipée",
-            style = MaterialTheme.typography.titleLarge
-        )
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text(
+                    text = "Retraite anticipée",
+                    style = MaterialTheme.typography.titleLarge
+                )
 
+                Text(
+                    text = "Consultez les dossiers et acceptez " +
+                            "ou refusez les demandes avec un commentaire."
+                )
+
+                Button(
+                    onClick = {
+                        afficherDemandes = true
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 52.dp)
+                ) {
+                    Text("Consulter les demandes")
+                }
+            }
+        }
         Button(
             onClick = {
-                afficherDemandes = true
+                afficherUtilisateurs = true
             },
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
         ) {
-            Text("Consulter les demandes")
-        }
-
-        OutlinedButton(
-            onClick = onEspacePersonnel,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Mon espace personnel")
+            Text("Consulter les utilisateurs")
         }
 
         OutlinedButton(
             onClick = onDeconnexion,
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 52.dp)
         ) {
             Text("Se déconnecter")
         }
     }
 }
-

@@ -28,6 +28,17 @@ fun EcranDemandesRetraite(
 
     var motif by rememberSaveable { mutableStateOf("") }
     var justificatif by rememberSaveable { mutableStateOf("") }
+    var nouvelleDemande by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    val demandeActuelle = etat.demandes.firstOrNull()
+
+    LaunchedEffect(demandeActuelle?.statut) {
+        if (demandeActuelle?.statut != "REFUSEE") {
+            nouvelleDemande = false
+        }
+    }
 
     BackHandler {
         onRetour()
@@ -86,11 +97,37 @@ fun EcranDemandesRetraite(
                 )
             }
         }
+        if (
+            !administrateur &&
+            !etat.chargement &&
+            demandeActuelle?.statut == "REFUSEE" &&
+            !nouvelleDemande
+        ) {
+            item {
+                Button(
+                    onClick = {
+                        motif = ""
+                        justificatif = ""
+                        nouvelleDemande = true
+                    },
+                    enabled = !etat.traitement,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Déposer une nouvelle demande")
+                }
+            }
+        }
 
         if (
             !etat.chargement &&
-            etat.demandes.isEmpty() &&
-            !administrateur
+            !administrateur &&
+            (
+                    etat.demandes.isEmpty() ||
+                            (
+                                    demandeActuelle?.statut == "REFUSEE" &&
+                                            nouvelleDemande
+                                    )
+                    )
         ) {
             item {
                 Column(

@@ -107,12 +107,16 @@ class DemandeRetraiteViewModel : ViewModel() {
         val reference = justificatif.trim()
 
         if (motifNettoye.length !in 10..1000) {
-            afficherErreur("Le motif doit contenir entre 10 et 1 000 caractères.")
+            afficherErreur(
+                "Le motif doit contenir entre 10 et 1 000 caractères."
+            )
             return
         }
 
         if (reference.length !in 3..200) {
-            afficherErreur("Renseigne une référence de justificatif fictif.")
+            afficherErreur(
+                "Renseigne une référence de justificatif fictif."
+            )
             return
         }
 
@@ -123,36 +127,52 @@ class DemandeRetraiteViewModel : ViewModel() {
 
         val document = collection.document(uid)
 
-        // Une transaction nécessite Internet et évite
-        // d'écraser une demande déjà existante.
+        // Identifiant unique pour l'éventuelle archive.
+        val archive = document.collection("historique").document()
+
         db.runTransaction { transaction ->
-            val existant = transaction.get(document)
-            check(!existant.exists()) {
-                "Une demande existe déjà."
+            val ancienneDemande = transaction.get(document)
+
+            val nouvelleDemande = mutableMapOf<String, Any>(
+                "utilisateurId" to uid,
+                "motif" to motifNettoye,
+                "justificatif" to reference,
+                "statut" to "EN_ATTENTE",
+                "commentaire" to "",
+                "creeLe" to FieldValue.serverTimestamp()
+            )
+
+            if (ancienneDemande.exists()) {
+                check(
+                    ancienneDemande.getString("statut") == "REFUSEE"
+                ) {
+                    "Une nouvelle demande est possible uniquement après un refus."
+                }
+
+                // Conserve le motif, la décision et les dates précédentes.
+                transaction.set(
+                    archive,
+                    requireNotNull(ancienneDemande.data)
+                )
+
+                nouvelleDemande["precedentId"] = archive.id
             }
 
-            transaction.set(
-                document,
-                mapOf(
-                    "utilisateurId" to uid,
-                    "motif" to motifNettoye,
-                    "justificatif" to reference,
-                    "statut" to "EN_ATTENTE",
-                    "commentaire" to "",
-                    "creeLe" to FieldValue.serverTimestamp()
-                )
-            )
+            transaction.set(document, nouvelleDemande)
+
             true
         }.addOnSuccessListener {
             if (auth.currentUser?.uid == uid) {
-                _uiState.value = _uiState.value.copy(traitement = false)
+                _uiState.value = _uiState.value.copy(
+                    traitement = false
+                )
                 charger(administrateur = false)
             }
         }.addOnFailureListener {
             if (auth.currentUser?.uid == uid) {
                 afficherErreur(
-                    "Envoi impossible. Vérifie Internet. " +
-                            "Si une demande existe déjà, actualise la page."
+                    "Envoi impossible. Vérifie Internet et actualise la page. " +
+                            "Une demande en attente ou acceptée ne peut pas être remplacée."
                 )
             }
         }

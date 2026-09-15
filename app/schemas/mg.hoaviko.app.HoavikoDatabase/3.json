@@ -1,0 +1,144 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 3,
+    "identityHash": "962fb94f8ef2061fdd4a1cc0419cf1f7",
+    "entities": [
+      {
+        "tableName": "cotisations",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `utilisateurId` TEXT NOT NULL, `montantAr` INTEGER NOT NULL, `dateVersement` INTEGER NOT NULL, `simulee` INTEGER NOT NULL, `modeVersement` TEXT NOT NULL DEFAULT 'Non renseigné')",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "utilisateurId",
+            "columnName": "utilisateurId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "montantAr",
+            "columnName": "montantAr",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateVersement",
+            "columnName": "dateVersement",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "simulee",
+            "columnName": "simulee",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modeVersement",
+            "columnName": "modeVersement",
+            "affinity": "TEXT",
+            "notNull": true,
+            "defaultValue": "'Non renseigné'"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_cotisations_utilisateurId",
+            "unique": false,
+            "columnNames": [
+              "utilisateurId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_cotisations_utilisateurId` ON `${TABLE_NAME}` (`utilisateurId`)"
+          }
+        ]
+      },
+      {
+        "tableName": "retraits",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, `utilisateurId` TEXT NOT NULL, `montantBrutAr` INTEGER NOT NULL, `montantNetAr` INTEGER NOT NULL, `tauxPenalite` INTEGER NOT NULL, `modeVersement` TEXT NOT NULL, `dateRetrait` INTEGER NOT NULL, `simulee` INTEGER NOT NULL)",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "utilisateurId",
+            "columnName": "utilisateurId",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "montantBrutAr",
+            "columnName": "montantBrutAr",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "montantNetAr",
+            "columnName": "montantNetAr",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tauxPenalite",
+            "columnName": "tauxPenalite",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "modeVersement",
+            "columnName": "modeVersement",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dateRetrait",
+            "columnName": "dateRetrait",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "simulee",
+            "columnName": "simulee",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": true,
+          "columnNames": [
+            "id"
+          ]
+        },
+        "indices": [
+          {
+            "name": "index_retraits_utilisateurId",
+            "unique": false,
+            "columnNames": [
+              "utilisateurId"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_retraits_utilisateurId` ON `${TABLE_NAME}` (`utilisateurId`)"
+          }
+        ]
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '962fb94f8ef2061fdd4a1cc0419cf1f7')"
+    ]
+  }
+}

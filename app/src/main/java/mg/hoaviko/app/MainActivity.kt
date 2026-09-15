@@ -571,11 +571,13 @@ fun EcranInscription(
 fun EcranEspacePersonnel(
     email: String,
     onDeconnexion: () -> Unit,
-    prenom: String = ""
+    prenom: String = "",
+    dateNaissance: String = ""
 ) {
     EcranCotisations(
         email = email,
         prenom = prenom,
+        dateNaissance = dateNaissance,
         onDeconnexion = onDeconnexion
     )
 }

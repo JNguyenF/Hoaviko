@@ -84,6 +84,7 @@ fun EcranCompte(
             EcranEspacePersonnel(
                 email = email,
                 prenom = profil.prenom,
+                dateNaissance = profil.dateNaissance,
                 onDeconnexion = onDeconnexion
             )
         }
@@ -265,4 +266,3 @@ fun EcranCompleterProfil(
         }
     }
 }
-

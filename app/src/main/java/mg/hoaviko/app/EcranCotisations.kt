@@ -21,10 +21,15 @@ import androidx.compose.runtime.saveable.rememberSaveable
 fun EcranCotisations(
     email: String,
     prenom: String,
+    dateNaissance: String,
     onDeconnexion: () -> Unit,
     cotisationViewModel: CotisationViewModel = viewModel()
 ) {
     var afficherDemande by rememberSaveable {
+        mutableStateOf(false)
+    }
+
+    var afficherRetrait by rememberSaveable {
         mutableStateOf(false)
     }
 
@@ -33,6 +38,16 @@ fun EcranCotisations(
             administrateur = false,
             onRetour = {
                 afficherDemande = false
+            }
+        )
+        return
+    }
+
+    if (afficherRetrait) {
+        EcranRetrait(
+            dateNaissance = dateNaissance,
+            onRetour = {
+                afficherRetrait = false
             }
         )
         return
@@ -294,6 +309,17 @@ fun EcranCotisations(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Ma demande de retraite anticipée")
+            }
+        }
+        item {
+            OutlinedButton(
+                onClick = {
+                    afficherRetrait = true
+                },
+                enabled = !formulaire.enregistrement,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Retirer de l'argent")
             }
         }
         // Déconnexion.
